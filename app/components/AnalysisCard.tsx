@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { TranslationError } from '../page'; // Import the type from your main page
+import { TranslationError } from '../page';
 
 interface AnalysisCardProps {
   error: TranslationError;
@@ -9,13 +9,15 @@ interface AnalysisCardProps {
 
 export const AnalysisCard: React.FC<AnalysisCardProps> = ({ error }) => {
   return (
-    <div className={`p-4 rounded-lg border-t-4 ${error.type === 'mistranslation' ? 'border-red-400 bg-red-50/50' : 'border-yellow-400 bg-yellow-50/50'}`}>
+    // ✨ UPDATED: Reverted orange back to yellow
+    <div className={`p-4 rounded-lg border-t-4 ${error.type === 'mistranslation' ? 'border-red-600 bg-red-100/70' : 'border-yellow-500 bg-yellow-100/70'}`}>
       <div className="text-center mb-4">
-        <span className={`inline-block px-4 py-1 text-sm font-semibold rounded-full uppercase tracking-wider ${error.type === 'mistranslation' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+        {/* ✨ UPDATED: Reverted orange back to yellow */}
+        <span className={`inline-block px-4 py-1 text-sm font-semibold rounded-full uppercase tracking-wider ${error.type === 'mistranslation' ? 'bg-red-200 text-red-900' : 'bg-yellow-200 text-yellow-900'}`}>
           {error.type}
         </span>
         <p className="text-xs text-neutral-500 mt-2">
-           Page {error.page} &bull; Confidence: {Math.round(error.confidence * 100)}%
+          Pages (Orig: {error.pages.original} / Trans: {error.pages.translated}) &bull; Confidence: {Math.round(error.confidence * 100)}%
         </p>
       </div>
       <hr className="mb-4" />

@@ -20,9 +20,9 @@ export const UploadView: React.FC<UploadViewProps> = ({ status, uploadedFile, on
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center animate-fade-in">
       <div className="max-w-2xl w-full">
-        <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 mb-3">AI Translation Evaluator</h1>
+        <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 mb-3">Translation Evaluator</h1>
         <p className="text-lg text-neutral-500 mb-8">
-          Upload an English PDF to translate into German. Our AI will analyze the translation for accuracy and quality.
+          Upload the English PDF. AI will analyze the translation for accuracy and quality.
         </p>
         
         {status.step !== 'upload' ? (
