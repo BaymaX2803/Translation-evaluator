@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Upload, FileText, AlertTriangle, Loader2 } from 'lucide-react';
+import { Upload, FileText, AlertTriangle, Loader2, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { PDFViewer, ErrorSummary, LoadingState } from './components';
 
 interface TranslationError {
@@ -34,6 +34,10 @@ const PDFTranslationEvaluator = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [englishPdfUrl, setEnglishPdfUrl] = useState<string>('');
   const [germanPdfUrl, setGermanPdfUrl] = useState<string>('');
+  const [zoomLevel, setZoomLevel] = useState(100);
+
+  // Static German PDF file path
+  const staticGermanPdfPath = '/57-59german.pdf';
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -96,9 +100,9 @@ const PDFTranslationEvaluator = () => {
       }));
 
       setTranslationErrors(processedErrors);
-      setTotalPages(3); // This would come from PDF analysis
+      setTotalPages(result.totalPages || 3);
       setEnglishPdfUrl(`data:application/pdf;base64,${result.originalPdf}`);
-      setGermanPdfUrl(`data:application/pdf;base64,${result.translatedPdf}`);
+      setGermanPdfUrl(staticGermanPdfPath); // Use static file path
       
       setProcessingStatus({
         step: 'complete',
@@ -173,8 +177,11 @@ const PDFTranslationEvaluator = () => {
 
     setTranslationErrors(mockErrors);
     setTotalPages(3);
-    setEnglishPdfUrl('/api/pdf/english');
-    setGermanPdfUrl('/api/pdf/german');
+    
+    // Create URL for uploaded file
+    const fileUrl = URL.createObjectURL(uploadedFile!);
+    setEnglishPdfUrl(fileUrl);
+    setGermanPdfUrl(staticGermanPdfPath); // Use static file path
   };
 
   const getPageErrors = (page: number) => {
@@ -184,6 +191,47 @@ const PDFTranslationEvaluator = () => {
   const hasPageErrors = (page: number) => {
     return getPageErrors(page).length > 0;
   };
+
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(prev + 25, 200));
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(prev - 25, 50));
+  };
+
+  const resetZoom = () => {
+    setZoomLevel(100);
+  };
+
+  const renderZoomControls = () => (
+    <div className="flex items-center justify-center space-x-4 mb-4">
+      <button
+        onClick={handleZoomOut}
+        className="p-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+        title="Zoom Out"
+      >
+        <ZoomOut className="w-4 h-4" />
+      </button>
+      <span className="text-white font-medium min-w-16 text-center">
+        {zoomLevel}%
+      </span>
+      <button
+        onClick={handleZoomIn}
+        className="p-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+        title="Zoom In"
+      >
+        <ZoomIn className="w-4 h-4" />
+      </button>
+      <button
+        onClick={resetZoom}
+        className="p-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+        title="Reset Zoom"
+      >
+        <RotateCcw className="w-4 h-4" />
+      </button>
+    </div>
+  );
 
   const renderUploadSection = () => (
     <div className="flex flex-col min-h-screen justify-center max-w-4xl mx-auto p-8">
@@ -267,24 +315,93 @@ const PDFTranslationEvaluator = () => {
         </div>
       </div>
 
-      {/* PDF Viewers Side by Side */}
+      {/* Zoom Controls */}
+      {renderZoomControls()}
+
+      {/* PDF Viewers Side by Side with Full Page Display */}
       <div className="grid grid-cols-2 gap-6 mb-6">
-        <PDFViewer
-          pdfUrl={englishPdfUrl}
-          title="Original (English)"
-          errors={translationErrors}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-        />
-        <PDFViewer
-          pdfUrl={germanPdfUrl}
-          title="Translation (German)"
-          errors={translationErrors}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-        />
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="bg-gray-800 text-white p-3 text-center font-semibold">
+            Original (English)
+          </div>
+          <div className="overflow-auto" style={{ height: '70vh' }}>
+            <div style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top left' }}>
+              {englishPdfUrl ? (
+                <iframe
+                  src={`${englishPdfUrl}#page=${currentPage}&view=FitH`}
+                  className="w-full"
+                  style={{ 
+                    height: `${70 * (100 / zoomLevel)}vh`,
+                    minHeight: '800px',
+                    border: 'none'
+                  }}
+                  title="Original English PDF"
+                />
+              ) : (
+                <div className="flex items-center justify-center h-96 text-gray-500">
+                  <FileText className="w-16 h-16 mb-4" />
+                  <p>No PDF loaded</p>
+                </div>
+              )}
+            </div>
+          </div>
+          {/* Error overlay for this page */}
+          <div className="absolute inset-0 pointer-events-none">
+            {getPageErrors(currentPage).map((error) => (
+              <div
+                key={error.id}
+                className={`absolute border-2 ${
+                  error.type === 'mistranslation' ? 'border-red-500 bg-red-500' : 'border-yellow-400 bg-yellow-400'
+                } bg-opacity-20 pointer-events-auto cursor-pointer`}
+                style={{
+                  left: `${error.position.x * (zoomLevel / 100)}px`,
+                  top: `${error.position.y * (zoomLevel / 100)}px`,
+                  width: `${error.position.width * (zoomLevel / 100)}px`,
+                  height: `${error.position.height * (zoomLevel / 100)}px`,
+                }}
+                title={error.suggestion}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="bg-gray-800 text-white p-3 text-center font-semibold">
+            Translation (German)
+          </div>
+          <div className="overflow-auto" style={{ height: '70vh' }}>
+            <div style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top left' }}>
+              <iframe
+                src={`${staticGermanPdfPath}#page=${currentPage}&view=FitH`}
+                className="w-full"
+                style={{ 
+                  height: `${70 * (100 / zoomLevel)}vh`,
+                  minHeight: '800px',
+                  border: 'none'
+                }}
+                title="German Translation PDF"
+              />
+            </div>
+          </div>
+          {/* Error overlay for this page */}
+          <div className="absolute inset-0 pointer-events-none">
+            {getPageErrors(currentPage).map((error) => (
+              <div
+                key={`german-${error.id}`}
+                className={`absolute border-2 ${
+                  error.type === 'mistranslation' ? 'border-red-500 bg-red-500' : 'border-yellow-400 bg-yellow-400'
+                } bg-opacity-20 pointer-events-auto cursor-pointer`}
+                style={{
+                  left: `${error.position.x * (zoomLevel / 100)}px`,
+                  top: `${error.position.y * (zoomLevel / 100)}px`,
+                  width: `${error.position.width * (zoomLevel / 100)}px`,
+                  height: `${error.position.height * (zoomLevel / 100)}px`,
+                }}
+                title={error.suggestion}
+              />
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Enhanced Page Navigation */}
@@ -341,6 +458,13 @@ const PDFTranslationEvaluator = () => {
             setTranslationErrors([]);
             setCurrentPage(1);
             setTotalPages(0);
+            setZoomLevel(100);
+            // Clean up URL if it was created from uploaded file
+            if (englishPdfUrl && englishPdfUrl.startsWith('blob:')) {
+              URL.revokeObjectURL(englishPdfUrl);
+            }
+            setEnglishPdfUrl('');
+            setGermanPdfUrl('');
           }}
           className="px-6 py-2 bg-orange-400 text-white rounded-lg hover:bg-red-700 transition-colors"
         >
